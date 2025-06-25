@@ -1,0 +1,131 @@
+name: UPM Test Suite
+
+on:
+  push:
+    branches: [ main, develop ]
+  pull_request:
+    branches: [ main ]
+
+jobs:
+  # Test on native platforms (Windows, macOS, Linux)
+  test-native:
+    runs-on: ${{ matrix.os }}
+    strategy:
+      matrix:
+        os: [ubuntu-latest, windows-latest, macos-latest]
+        python-version: ['3.8', '3.9', '3.10', '3.11', '3.12']
+      fail-fast: false
+
+    steps:
+    - uses: actions/checkout@v4
+    
+    - name: Install UV
+      uses: astral-sh/setup-uv@v3
+      with:
+        version: "latest"
+    
+    - name: Set up Python ${{ matrix.python-version }}
+      run: uv python install ${{ matrix.python-version }}
+    
+    - name: Run native tests
+      run: |
+        cd upm
+        python test_upm.py
+    
+    - name: Test UPM with uvx
+      run: |
+        cd upm
+        uvx --from . upm list-managers
+        uvx --from . upm install git --dry-run
+
+  # Test across Linux distributions using Docker
+  test-docker:
+    runs-on: ubuntu-latest
+    
+    steps:
+    - uses: actions/checkout@v4
+    
+    - name: Set up Python
+      uses: actions/setup-python@v4
+      with:
+        python-version: '3.11'
+    
+    - name: Run Docker tests
+      run: |
+        cd upm
+        python docker-tests.py
+    
+    # Run quick test on subset for faster feedback
+    - name: Run quick Docker tests
+      if: github.event_name == 'pull_request'
+      run: |
+        cd upm
+        python docker-tests.py --distros "ubuntu:24.04" "fedora:39" "registry.access.redhat.com/ubi9/ubi-minimal"
+
+  # Build and test package
+  build-test:
+    runs-on: ubuntu-latest
+    
+    steps:
+    - uses: actions/checkout@v4
+    
+    - name: Install UV
+      uses: astral-sh/setup-uv@v3
+    
+    - name: Build package
+      run: |
+        cd upm
+        uv build
+    
+    - name: Test built package
+      run: |
+        cd upm
+        uvx --from dist/*.whl upm --help
+        uvx --from dist/*.whl upm list-managers
+    
+    - name: Upload artifacts
+      uses: actions/upload-artifact@v4
+      with:
+        name: upm-dist
+        path: upm/dist/
+
+  # Test specific package managers if available
+  test-package-managers:
+    runs-on: ${{ matrix.os }}
+    strategy:
+      matrix:
+        include:
+          - os: ubuntu-latest
+            package-manager: apt
+            test-package: curl
+          - os: macos-latest
+            package-manager: brew
+            test-package: curl
+          # Note: Chocolatey test would require admin privileges
+      fail-fast: false
+    
+    steps:
+    - uses: actions/checkout@v4
+    
+    - name: Install UV
+      uses: astral-sh/setup-uv@v3
+    
+    - name: Test package manager detection
+      run: |
+        cd upm
+        uvx --from . upm list-managers | grep "${{ matrix.package-manager }}"
+    
+    - name: Test dry-run installation
+      run: |
+        cd upm
+        uvx --from . upm install ${{ matrix.test-package }} --dry-run
+    
+    # Only run actual package operations on Ubuntu to avoid conflicts
+    - name: Test actual package operations (Ubuntu only)
+      if: matrix.os == 'ubuntu-latest'
+      run: |
+        cd upm
+        # Test search (safe operation)
+        uvx --from . upm search python
+        # Test update (safe operation)
+        uvx --from . upm update --dry-run 

@@ -1,0 +1,41 @@
+[build-system]
+requires = ["setuptools>=61.0", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "upm"
+version = "0.1.0"
+description = "Universal Package Manager - A wrapper for various system package managers"
+requires-python = ">=3.8"
+authors = [
+    {name = "UPM Development", email = "nobody@example.test"}
+]
+readme = "README.md"
+license = {text = "MIT"}
+keywords = ["package-manager", "wrapper", "cli", "universal"]
+classifiers = [
+    "Development Status :: 4 - Beta",
+    "Intended Audience :: Developers",
+    "Intended Audience :: System Administrators",
+    "License :: OSI Approved :: MIT License",
+    "Operating System :: OS Independent",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.8",
+    "Programming Language :: Python :: 3.9",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Topic :: System :: Systems Administration",
+    "Topic :: Utilities",
+]
+dependencies = [
+    # No external dependencies - using only standard library
+]
+
+[project.urls]
+home-page = "https://github.com/example/upm"
+repository = "https://github.com/example/upm"
+documentation = "https://github.com/example/upm#readme"
+
+[project.scripts]
+upm = "upm.cli:main" 
