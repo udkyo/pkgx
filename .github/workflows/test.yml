@@ -26,12 +26,10 @@ jobs:
 
     - name: Run native tests
       run: |
-        cd pkgx
         make test
 
     - name: Test pkgx with uvx
       run: |
-        cd pkgx
         uvx --from . pkgx list-managers
         uvx --from . pkgx install git --dry-run
 
@@ -49,14 +47,12 @@ jobs:
 
     - name: Run Docker tests
       run: |
-        cd pkgx
         make test-docker
 
     # Run quick test on subset for faster feedback
     - name: Run quick Docker tests
       if: github.event_name == 'pull_request'
       run: |
-        cd pkgx
         uv run docker-tests.py --distros "ubuntu:24.04" "fedora:39" "registry.access.redhat.com/ubi9/ubi-minimal"
 
   # Build and test package
@@ -73,12 +69,10 @@ jobs:
 
     - name: Build package
       run: |
-        cd pkgx
         make build
 
     - name: Test built package
       run: |
-        cd pkgx
         uvx --from dist/*.whl pkgx --help
         uvx --from dist/*.whl pkgx list-managers
 
@@ -113,19 +107,16 @@ jobs:
 
     - name: Test package manager detection
       run: |
-        cd pkgx
         uvx --from . pkgx list-managers | grep "${{ matrix.package-manager }}"
 
     - name: Test dry-run installation
       run: |
-        cd pkgx
         uvx --from . pkgx install ${{ matrix.test-package }} --dry-run
 
     # Only run actual package operations on Ubuntu to avoid conflicts
     - name: Test actual package operations (Ubuntu only)
       if: matrix.os == 'ubuntu-latest'
       run: |
-        cd pkgx
         # Test search (safe operation)
         uvx --from . pkgx search python
         # Test update (safe operation)
