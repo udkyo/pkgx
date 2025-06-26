@@ -1,4 +1,4 @@
-# Line ending configuration for UPM project
+# Line ending configuration for pkgx project
 
 # Ensure Unix line endings for these critical files
 *.yml text eol=lf
@@ -24,4 +24,4 @@ Makefile text eol=lf
 *.ico binary
 *.pdf binary
 *.zip binary
-*.tar.gz binary 
+*.tar.gz binary

@@ -3,12 +3,12 @@ requires = ["setuptools>=61.0", "wheel"]
 build-backend = "setuptools.build_meta"
 
 [project]
-name = "upm"
+name = "pkgx"
 version = "0.1.0"
 description = "Universal Package Manager - A wrapper for various system package managers"
 requires-python = ">=3.8"
 authors = [
-    {name = "UPM Development", email = "nobody@example.test"}
+    {name = "pkgx Development", email = "nobody@example.test"}
 ]
 readme = "README.md"
 license = {text = "MIT"}
@@ -33,9 +33,9 @@ dependencies = [
 ]
 
 [project.urls]
-home-page = "https://github.com/example/upm"
-repository = "https://github.com/example/upm"
-documentation = "https://github.com/example/upm#readme"
+home-page = "https://github.com/udkyo/pkgx"
+repository = "https://github.com/udkyo/pkgx"
+documentation = "https://github.com/udkyo/pkgx#README.md"
 
 [project.scripts]
-upm = "upm.cli:main" 
+pkgx = "pkgx.cli:main"

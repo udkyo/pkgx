@@ -1,12 +1,12 @@
-# UPM Testing Guide
+# pkgx Testing Guide
 
-This document describes the comprehensive testing strategy for UPM (Universal Package Manager) and how to run tests locally and in CI/CD.
+This document describes the comprehensive testing strategy for pkgx (Universal Package Manager) and how to run tests locally and in CI/CD.
 
 ## 🧪 Test Architecture
 
-The UPM test suite uses a **single source of truth** approach:
+The pkgx test suite uses a **single source of truth** approach:
 
-1. **`test_upm.py`** - The main UV script with inline dependencies that tests all functionality
+1. **`test_pkgx.py`** - The main UV script with inline dependencies that tests all functionality
 2. **`docker-tests.py`** - Docker orchestrator that runs the same UV script across different Linux distributions
 3. **GitHub Actions** - CI/CD pipeline that runs tests across Windows, macOS, and Linux
 
@@ -49,11 +49,11 @@ docker --version  # Ensure Docker is installed and running
 
 ```bash
 # Run on current platform
-cd upm
-python test_upm.py
+cd pkgx
+python test_pkgx.py
 ```
 
-This will test UPM on your current platform and automatically detect available package managers.
+This will test pkgx on your current platform and automatically detect available package managers.
 
 ### Using Makefile
 
@@ -95,7 +95,7 @@ python docker-tests.py --list
 
 ## 🔧 UV Script Details
 
-The `test_upm.py` script is a **UV script with inline dependencies**:
+The `test_pkgx.py` script is a **UV script with inline dependencies**:
 
 ```python
 #!/usr/bin/env -S uv run
@@ -113,7 +113,7 @@ The `test_upm.py` script is a **UV script with inline dependencies**:
 ### Key Features
 - **Self-contained**: No external setup required
 - **Cross-platform**: Runs on Windows, macOS, and Linux
-- **Comprehensive**: Tests all UPM functionality
+- **Comprehensive**: Tests all pkgx functionality
 - **Fast**: Completes in ~30 seconds
 - **Safe**: Uses dry-run mode to avoid system changes
 
@@ -137,8 +137,8 @@ The Docker test runner:
 
 1. **Pulls** base distribution images
 2. **Installs** Python, pip, curl, and UV
-3. **Copies** UPM source and test script
-4. **Runs** the same `test_upm.py` script
+3. **Copies** pkgx source and test script
+4. **Runs** the same `test_pkgx.py` script
 5. **Collects** results and provides summary
 
 ### Docker Test Flow
@@ -146,8 +146,8 @@ The Docker test runner:
 ```mermaid
 graph LR
     A[Pull Image] --> B[Install Dependencies]
-    B --> C[Copy UPM Source]
-    C --> D[Run test_upm.py]
+    B --> C[Copy pkgx Source]
+    C --> D[Run test_pkgx.py]
     D --> E[Collect Results]
     E --> F[Summary Report]
 ```
@@ -227,9 +227,9 @@ Failed: 1
 
 **Import errors:**
 ```bash
-Error importing UPM modules: No module named 'upm.managers'
+Error importing pkgx modules: No module named 'pkgx.managers'
 ```
-**Solution:** Run from the `upm` directory
+**Solution:** Run from the `pkgx` directory
 
 **Permission errors:**
 ```bash
@@ -242,7 +242,7 @@ Error running container: permission denied
 Add debug output to tests:
 ```bash
 # Run with verbose output
-python test_upm.py --verbose  # (if implemented)
+python test_pkgx.py --verbose  # (if implemented)
 
 # Check Docker logs
 docker logs <container_id>
@@ -252,10 +252,10 @@ docker logs <container_id>
 
 ### Adding Test Functions
 
-1. Create new test function in `test_upm.py`:
+1. Create new test function in `test_pkgx.py`:
 ```python
 def test_new_feature(results: TestResult):
-    """Test new UPM feature"""
+    """Test new pkgx feature"""
     # Test implementation
     if success:
         results.add_pass("New feature test")
@@ -306,10 +306,10 @@ test_new_feature(results)
 
 ## 📝 Summary
 
-The UPM test suite provides comprehensive coverage across:
+The pkgx test suite provides comprehensive coverage across:
 - **3 operating systems** (Windows, macOS, Linux)
 - **9 Linux distributions** via Docker
 - **8 package managers** (apt, dnf, yum, microdnf, zypper, apk, brew, choco)
 - **5 Python versions** (3.8-3.12)
 
-This ensures UPM works reliably in diverse environments and provides confidence for production use. 
+This ensures pkgx works reliably in diverse environments and provides confidence for production use.

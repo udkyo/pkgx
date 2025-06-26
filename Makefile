@@ -1,66 +1,48 @@
-# UPM Test Suite Makefile
+# pkgx Test Suite Makefile
 
-.PHONY: help test test-local test-docker test-docker-quick build install clean
+.PHONY: help test test-docker test-all build install clean
 
-# Default target
 help:
-	@echo "UPM Test Suite Commands:"
+	@echo "pkgx Test Suite Commands:"
 	@echo ""
-	@echo "  test-local       Run tests on current platform using UV script"
-	@echo "  test-docker      Run tests across all Linux distributions"
-	@echo "  test-docker-quick Run tests on subset of distributions (Ubuntu, Fedora, Alpine)"
-	@echo "  list-distros     List available Docker test distributions"
-	@echo "  test             Run both local and Docker tests"
-	@echo "  build            Build UPM package"
-	@echo "  install          Install UPM tool locally"
+	@echo "Testing:"
+	@echo "  test             Run local tests"
+	@echo "  test-docker      Run tests in Docker containers"
+	@echo "  test-all         Run both local and Docker tests"
+	@echo ""
+	@echo "Development:"
+	@echo "  build            Build pkgx package"
+	@echo "  install          Install pkgx tool locally"
 	@echo "  clean            Clean build artifacts"
-	@echo ""
-	@echo "Examples:"
-	@echo "  make test-local                    # Test on current platform"
-	@echo "  make test-docker                   # Test all Linux distributions"
-	@echo "  make test-docker DISTROS=ubuntu    # Test specific distribution"
 
-# Run tests locally using UV script
-test-local:
-	@echo "[TEST] Running UPM tests locally..."
-	python3 test_upm.py
+# Local testing using the UV script
+test:
+	@echo "[TEST] Running pkgx tests locally..."
+	@cd . && python test_pkgx.py
 
-# Run comprehensive Docker tests
+# Docker-based cross-platform testing
 test-docker:
-	@echo "[DOCKER] Running UPM Docker tests..."
-ifdef DISTROS
-	python3 docker-tests.py --distros $(DISTROS)
-else
-	python3 docker-tests.py
-endif
-
-# Run quick Docker tests (subset of distributions)
-test-docker-quick:
-	@echo "[DOCKER] Running quick UPM Docker tests..."
-	python3 docker-tests.py --distros "ubuntu:24.04" "fedora:39" "registry.access.redhat.com/ubi9/ubi-minimal"
-
-# List available Docker distributions
-list-distros:
-	python3 docker-tests.py --list
+	@echo "[TEST] Running pkgx tests in Docker containers..."
+	@cd . && python docker-tests.py
 
 # Run all tests
-test: test-local test-docker
+test-all: test test-docker
+	@echo "[TEST] All tests completed!"
 
 # Build the package
 build:
-	@echo "[BUILD] Building UPM package..."
-	uv build
+	@echo "[BUILD] Building pkgx package..."
+	@uv build
 
 # Install the tool locally
-install:
-	@echo "[INSTALL] Installing UPM tool locally..."
-	uv tool install .
+install: build
+	@echo "[INSTALL] Installing pkgx locally..."
+	@uv tool install --force --from dist/ pkgx
 
 # Clean build artifacts
 clean:
 	@echo "[CLEAN] Cleaning build artifacts..."
-	rm -rf dist/
-	rm -rf build/
-	rm -rf *.egg-info/
-	find . -type d -name __pycache__ -exec rm -rf {} +
-	find . -type f -name "*.pyc" -delete 
+	@rm -rf dist/
+	@rm -rf *.egg-info/
+	@find . -type d -name __pycache__ -exec rm -rf {} + 2>/dev/null || true
+	@find . -type f -name "*.pyc" -delete 2>/dev/null || true

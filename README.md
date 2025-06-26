@@ -1,6 +1,6 @@
-# UPM - Universal Package Manager
+# pkgx - Universal Package Manager
 
-A cross-platform wrapper for various system package managers. UPM automatically detects your system's package manager and provides a unified interface for common package management operations.
+A cross-platform wrapper for various system package managers. pkgx automatically detects your system's package manager and provides a unified interface for common package management operations.
 
 ## Supported Package Managers
 
@@ -19,7 +19,7 @@ A cross-platform wrapper for various system package managers. UPM automatically 
 
 ```bash
 # Install from current directory
-uvx --from . upm --help
+uvx --from . pkgx --help
 
 # Or install persistently
 uv tool install .
@@ -29,10 +29,10 @@ uv tool install .
 
 ```bash
 # Install and run temporarily
-uvx upm install git
+uvx pkgx install git
 
 # Install persistently
-uv tool install upm
+uv tool install pkgx
 ```
 
 ## Usage
@@ -41,45 +41,45 @@ uv tool install upm
 
 ```bash
 # Install packages
-upm install git vim curl
+pkgx install git vim curl
 
 # Remove packages
-upm remove old-package
+pkgx remove old-package
 
 # Update package lists
-upm update
+pkgx update
 
 # Upgrade all packages
-upm upgrade
+pkgx upgrade
 
 # Upgrade specific packages
-upm upgrade git vim
+pkgx upgrade git vim
 
 # Search for packages
-upm search firefox
+pkgx search firefox
 
 # List available package managers
-upm list-managers
+pkgx list-managers
 
 # Show version
-upm version
+pkgx version
 ```
 
 ### Advanced Options
 
 ```bash
 # Force a specific package manager
-upm install git --manager apt
-upm install git -m brew
+pkgx install git --manager apt
+pkgx install git -m brew
 
 # Dry run (show what would be executed)
-upm install git --dry-run
-upm upgrade --dry-run -n
+pkgx install git --dry-run
+pkgx upgrade --dry-run -n
 ```
 
 ## How It Works
 
-1. **Auto-detection**: UPM automatically detects available package managers on your system
+1. **Auto-detection**: pkgx automatically detects available package managers on your system
 2. **Priority Selection**: Uses platform-specific preferences (e.g., `apt` on Debian/Ubuntu, `dnf` on Fedora)
 3. **Unified Interface**: Translates commands to the appropriate syntax for each package manager
 4. **Cross-platform**: Works on Linux, macOS, and Windows
@@ -90,7 +90,7 @@ upm upgrade --dry-run -n
 
 ```bash
 # This command works on any supported system:
-upm install git
+pkgx install git
 
 # On Ubuntu/Debian, runs: apt install -y git
 # On Fedora, runs: dnf install -y git
@@ -101,7 +101,7 @@ upm install git
 ### Checking Available Managers
 
 ```bash
-$ upm list-managers
+$ pkgx list-managers
 Available package managers:
 
   apt          - apt          ✓ available (auto-detected)
@@ -120,8 +120,8 @@ Auto-detected package manager: apt
 
 ```bash
 # Force use of a specific package manager
-upm install nodejs --manager brew
-upm search python --manager apt
+pkgx install nodejs --manager brew
+pkgx search python --manager apt
 ```
 
 ## Development
@@ -129,10 +129,10 @@ upm search python --manager apt
 ### Project Structure
 
 ```
-upm/
+pkgx/
 ├── pyproject.toml          # Package configuration
 ├── README.md               # This file
-└── upm/
+└── pkgx/
     ├── __init__.py         # Package metadata
     ├── cli.py              # Main CLI interface
     └── managers.py         # Package manager implementations
@@ -141,14 +141,14 @@ upm/
 ### Testing Locally
 
 ```bash
-# Navigate to the upm directory
-cd upm
+# Navigate to the pkgx directory
+cd pkgx
 
 # Test the tool without installing
-uvx --from . upm list-managers
+uvx --from . pkgx list-managers
 
 # Test specific commands with dry-run
-uvx --from . upm install git --dry-run
+uvx --from . pkgx install git --dry-run
 ```
 
 ### Building and Publishing
@@ -169,4 +169,4 @@ uv publish
 
 ## License
 
-MIT License - see the LICENSE file for details. 
+MIT License - see the LICENSE file for details.

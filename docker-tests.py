@@ -1,293 +1,307 @@
 #!/usr/bin/env python3
 """
-Docker-based test runner for UPM across different Linux distributions
+Docker-based test runner for pkgx across different Linux distributions
 """
 
-import subprocess
+import os
 import sys
 import json
-import tempfile
-from pathlib import Path
-from typing import Dict, List, Tuple
 import shutil
-
-# Test configurations for different distributions
-DISTRIBUTIONS = {
-    "ubuntu:24.04": {
-        "name": "Ubuntu 24.04",
-        "setup_commands": [
-            "apt-get update",
-            "apt-get install -y curl",
-            "curl -LsSf https://astral.sh/uv/install.sh | sh",
-            "export PATH=\"$HOME/.cargo/bin:$PATH\""
-        ],
-        "expected_manager": "apt"
-    },
-    "fedora:39": {
-        "name": "Fedora 39",
-        "setup_commands": [
-            "dnf install -y curl",
-            "curl -LsSf https://astral.sh/uv/install.sh | sh",
-            "export PATH=\"$HOME/.cargo/bin:$PATH\""
-        ],
-        "expected_manager": "dnf"
-    },
-    "almalinux:9": {
-        "name": "AlmaLinux 9",
-        "setup_commands": [
-            "curl -LsSf https://astral.sh/uv/install.sh | sh",
-            "export PATH=\"$HOME/.cargo/bin:$PATH\""
-        ],
-        "expected_manager": "dnf"
-    },
-    "registry.access.redhat.com/ubi9/ubi-minimal": {
-        "name": "UBI 9 Minimal",
-        "setup_commands": [
-            "microdnf install -y bash tar gzip",
-            "curl -LsSf https://astral.sh/uv/install.sh | sh",
-            "export PATH=\"$HOME/.cargo/bin:$PATH\""
-        ],
-        "expected_manager": "microdnf"
-    },
-    "alpine:3.18": {
-        "name": "Alpine 3.18",
-        "setup_commands": [
-            "apk add --no-cache curl bash",
-            "curl -LsSf https://astral.sh/uv/install.sh | sh",
-            "export PATH=\"$HOME/.cargo/bin:$PATH\""
-        ],
-        "expected_manager": "apk"
-    },
-    "opensuse/leap:15.5": {
-        "name": "openSUSE Leap 15.5",
-        "setup_commands": [
-            "zypper install -y curl tar gzip",
-            "curl -LsSf https://astral.sh/uv/install.sh | sh",
-            "export PATH=\"$HOME/.cargo/bin:$PATH\""
-        ],
-        "expected_manager": "zypper"
-    }
-}
+import tempfile
+import subprocess
+import argparse
+from pathlib import Path
+from typing import List, Dict, Any, Optional
 
 
 class DockerTestRunner:
-    def __init__(self, source_dir: Path):
+    """Runs pkgx tests across different Docker environments"""
+
+    def __init__(self, source_dir: Path, verbose: bool = False):
         self.source_dir = source_dir
+        self.verbose = verbose
         self.results = {}
-        
-    def check_docker_available(self) -> bool:
-        """Check if Docker is available"""
-        try:
-            result = subprocess.run(["docker", "--version"], 
-                                  capture_output=True, text=True)
-            return result.returncode == 0
-        except FileNotFoundError:
-            return False
-    
-    def create_test_script(self) -> str:
-        """Create the test script for containers"""
-        # Use explicit \n to ensure Unix line endings
-        script_lines = [
-            "#!/bin/bash -e",
-            "",
-            "# Setup UV and Python environment", 
-            "export PATH=\"$HOME/.local/bin:$PATH\"",
-            "",
-            "# Copy UPM source and test script",
-            "cd /workspace",
-            "",
-            "# Run the test script with proper error handling",
-            "echo \"[TEST] Running UPM tests...\"",
-            "if uv run test_upm.py; then",
-            "    echo \"[SUCCESS] Tests completed successfully\"",
-            "    exit 0",
-            "else",
-            "    echo \"[FAILURE] Tests failed with exit code $?\"",
-            "    exit 1",
-            "fi",
-            ""
-        ]
-        return '\n'.join(script_lines)
-    
-    def run_container_test(self, image: str, config: Dict) -> Tuple[bool, str]:
-        """Run tests in a specific container"""
-        print(f"\n[DOCKER] Testing {config['name']} ({image})")
-        print("=" * 50)
-        
-        try:
-            # Create temporary directory for this test
-            with tempfile.TemporaryDirectory() as temp_dir:
-                temp_path = Path(temp_dir)
-                
-                # Copy source files to temp directory
-                shutil.copytree(self.source_dir / "upm", temp_path / "upm")
-                shutil.copy2(self.source_dir / "test_upm.py", temp_path / "test_upm.py")
-                shutil.copy2(self.source_dir / "pyproject.toml", temp_path / "pyproject.toml")
-                
-                # Create test script with Unix line endings
-                test_script = self.create_test_script()
-                (temp_path / "run_tests.sh").write_text(test_script, newline='\n')
-                (temp_path / "run_tests.sh").chmod(0o755)
-                
-                # Build Docker command
-                docker_cmd = [
-                    "docker", "run", "--rm",
-                    "-v", f"{temp_path}:/workspace",
-                    "-w", "/workspace",
-                    image,
-                    "sh", "-c"
-                ]
-                
-                # Create full command with setup
-                full_command = " && ".join(config["setup_commands"] + [
-                    "bash /workspace/run_tests.sh"
-                ])
-                
-                docker_cmd.append(full_command)
-                
-                # Run the test
-                print(f"[START] Starting container...")
-                result = subprocess.run(
-                    docker_cmd,
+
+        # Test distributions - representative sample of different package managers
+        self.distributions = {
+            "ubuntu:24.04": {
+                "name": "Ubuntu 24.04",
+                "expected_manager": "apt",
+                "install_cmd": "apt-get update && apt-get install -y"
+            },
+            "debian:12": {
+                "name": "Debian 12",
+                "expected_manager": "apt",
+                "install_cmd": "apt-get update && apt-get install -y"
+            },
+            "fedora:39": {
+                "name": "Fedora 39",
+                "expected_manager": "dnf",
+                "install_cmd": "dnf install -y"
+            },
+            "registry.access.redhat.com/ubi9/ubi-minimal": {
+                "name": "RHEL 9 UBI Minimal",
+                "expected_manager": "microdnf",
+                "install_cmd": "microdnf install -y"
+            },
+            "opensuse/leap:15.5": {
+                "name": "openSUSE Leap 15.5",
+                "expected_manager": "zypper",
+                "install_cmd": "zypper install -y"
+            },
+            "alpine:3.18": {
+                "name": "Alpine 3.18",
+                "expected_manager": "apk",
+                "install_cmd": "apk add"
+            }
+        }
+
+    def create_test_dockerfile(self, base_image: str, expected_manager: str, install_cmd: str) -> str:
+        """Create Dockerfile for testing"""
+
+        # Base setup commands - install Python, pip, and curl
+        if "alpine" in base_image:
+            setup_commands = [
+                "apk add --no-cache python3 py3-pip curl bash",
+                "ln -sf python3 /usr/bin/python"
+            ]
+        elif "ubi" in base_image or "rhel" in base_image:
+            setup_commands = [
+                f"{install_cmd} python3 python3-pip curl",
+                "ln -sf python3 /usr/bin/python"
+            ]
+        else:
+            setup_commands = [
+                f"{install_cmd} python3 python3-pip curl",
+                "ln -sf python3 /usr/bin/python"
+            ]
+
+        dockerfile_content = f"""
+FROM {base_image}
+
+# Install system dependencies
+RUN {' && '.join(setup_commands)}
+
+# Install UV
+RUN curl -LsSf https://astral.sh/uv/install.sh | sh
+ENV PATH="/root/.local/bin:$PATH"
+
+# Set working directory
+WORKDIR /test
+
+# Copy pkgx source and test script
+COPY pkgx/ ./pkgx/
+COPY test_pkgx.py ./test_pkgx.py
+
+# Run tests
+CMD sh -c "echo 'Starting pkgx tests...' && if uv run test_pkgx.py; then echo 'Tests passed!'; else echo 'Tests failed!'; exit 1; fi"
+"""
+        return dockerfile_content
+
+    def run_test_for_distribution(self, image_tag: str, distro_info: Dict[str, str]) -> Dict[str, Any]:
+        """Run tests for a specific distribution"""
+        print(f"\n[DOCKER] Testing {distro_info['name']} ({image_tag})")
+
+        result = {
+            "image": image_tag,
+            "name": distro_info["name"],
+            "expected_manager": distro_info["expected_manager"],
+            "success": False,
+            "output": "",
+            "error": ""
+        }
+
+        with tempfile.TemporaryDirectory() as temp_dir:
+            temp_path = Path(temp_dir)
+
+            try:
+                # Copy pkgx source and test script to temp directory
+                shutil.copytree(self.source_dir / "pkgx", temp_path / "pkgx")
+                shutil.copy2(self.source_dir / "test_pkgx.py", temp_path / "test_pkgx.py")
+
+                # Create Dockerfile
+                dockerfile_content = self.create_test_dockerfile(
+                    image_tag,
+                    distro_info["expected_manager"],
+                    distro_info["install_cmd"]
+                )
+
+                dockerfile_path = temp_path / "Dockerfile"
+                dockerfile_path.write_text(dockerfile_content)
+
+                # Build Docker image
+                image_name = f"pkgx-test-{image_tag.replace(':', '-').replace('/', '-')}"
+
+                if self.verbose:
+                    print(f"[DOCKER] Building image {image_name}...")
+
+                build_result = subprocess.run(
+                    ["docker", "build", "-t", image_name, str(temp_path)],
                     capture_output=True,
                     text=True,
-                    timeout=300  # 5 minute timeout
+                    timeout=300
                 )
-                
-                success = result.returncode == 0
-                output = result.stdout + "\n" + result.stderr
-                
-                # Additional check for known failure patterns
-                if success:
-                    failure_patterns = [
-                        "No solution found when resolving",
-                        "requirements are unsatisfiable",
-                        "[FAILURE]",
-                        "ImportError:",
-                        "ModuleNotFoundError:",
-                        "Error importing UPM modules"
-                    ]
-                    
-                    combined_output = output.lower()
-                    for pattern in failure_patterns:
-                        if pattern.lower() in combined_output:
-                            success = False
-                            break
-                
-                if success:
-                    print(f"[PASS] {config['name']} tests PASSED")
-                else:
-                    print(f"[FAIL] {config['name']} tests FAILED")
-                    print(f"Exit code: {result.returncode}")
-                    if result.stderr:
-                        print(f"Error output:\n{result.stderr}")
-                
-                return success, output
-                
-        except subprocess.TimeoutExpired:
-            error_msg = f"Tests timed out after 5 minutes"
-            print(f"[TIMEOUT] {error_msg}")
-            return False, error_msg
-        except Exception as e:
-            error_msg = f"Error running container: {e}"
-            print(f"[ERROR] {error_msg}")
-            return False, error_msg
-    
-    def run_all_tests(self, selected_distros: List[str] = None) -> Dict[str, Tuple[bool, str]]:
-        """Run tests across all or selected distributions"""
+
+                if build_result.returncode != 0:
+                    result["error"] = f"Build failed: {build_result.stderr}"
+                    return result
+
+                # Run tests in container
+                if self.verbose:
+                    print(f"[DOCKER] Running tests in {image_name}...")
+
+                run_result = subprocess.run(
+                    ["docker", "run", "--rm", image_name],
+                    capture_output=True,
+                    text=True,
+                    timeout=120
+                )
+
+                result["output"] = run_result.stdout
+                result["error"] = run_result.stderr
+                result["success"] = run_result.returncode == 0
+
+                # Clean up image
+                subprocess.run(
+                    ["docker", "rmi", image_name],
+                    capture_output=True,
+                    text=True
+                )
+
+            except subprocess.TimeoutExpired:
+                result["error"] = "Test timed out"
+            except Exception as e:
+                result["error"] = f"Unexpected error: {e}"
+
+        return result
+
+    def check_docker_available(self) -> bool:
+        """Check if Docker is available and running"""
+        try:
+            result = subprocess.run(
+                ["docker", "version"],
+                capture_output=True,
+                text=True,
+                timeout=10
+            )
+            return result.returncode == 0
+        except (subprocess.TimeoutExpired, FileNotFoundError):
+            return False
+
+    def run_all_tests(self, selected_distros: Optional[List[str]] = None) -> bool:
+        """Run tests across all distributions"""
         if not self.check_docker_available():
-            print("[ERROR] Docker is not available. Please install Docker to run these tests.")
-            return {}
-        
-        # Filter distributions if specific ones are requested
-        test_distros = DISTRIBUTIONS
+            print("[ERROR] Docker is not available or not running")
+            print("Please install Docker and ensure it's running")
+            return False
+
+        # Filter distributions if specific ones requested
         if selected_distros:
-            test_distros = {k: v for k, v in DISTRIBUTIONS.items() 
-                          if k in selected_distros or v['name'] in selected_distros}
-        
-        print(f"[TEST] Running UPM Docker Tests")
-        print(f"Testing {len(test_distros)} distributions")
-        print("=" * 60)
-        
-        results = {}
-        for image, config in test_distros.items():
-            success, output = self.run_container_test(image, config)
-            results[config['name']] = (success, output)
-        
-        return results
-    
-    def print_summary(self, results: Dict[str, Tuple[bool, str]]):
-        """Print test summary"""
-        print("\n" + "=" * 60)
-        print("[SUMMARY] DOCKER TEST SUMMARY")
-        print("=" * 60)
-        
-        passed = 0
-        failed = 0
-        
-        for distro, (success, output) in results.items():
-            status = "[PASS]" if success else "[FAIL]"
-            print(f"{status}: {distro}")
-            if success:
-                passed += 1
+            test_distros = {k: v for k, v in self.distributions.items() if k in selected_distros}
+            if not test_distros:
+                print(f"[ERROR] No matching distributions found for: {selected_distros}")
+                return False
+        else:
+            test_distros = self.distributions
+
+        print(f"[TEST] Running pkgx Docker Tests")
+        print(f"Testing {len(test_distros)} distributions...")
+
+        all_success = True
+
+        for image_tag, distro_info in test_distros.items():
+            result = self.run_test_for_distribution(image_tag, distro_info)
+            self.results[image_tag] = result
+
+            if result["success"]:
+                print(f"✅ {result['name']}: PASSED")
+                if self.verbose and result["output"]:
+                    # Show the detailed test output in verbose mode
+                    print(f"   Test output:")
+                    for line in result["output"].splitlines():
+                        if line.strip():  # Skip empty lines
+                            print(f"   {line}")
             else:
-                failed += 1
-        
-        print(f"\nTotal: {len(results)}")
+                print(f"❌ {result['name']}: FAILED")
+                if self.verbose:
+                    if result["error"]:
+                        print(f"   Error: {result['error']}")
+                    if result["output"]:
+                        print(f"   Output: {result['output']}")
+                all_success = False
+
+        return all_success
+
+    def print_summary(self):
+        """Print test summary"""
+        if not self.results:
+            return
+
+        total = len(self.results)
+        passed = sum(1 for r in self.results.values() if r["success"])
+        failed = total - passed
+
+        print(f"\n📊 Docker Test Summary:")
+        print(f"Total distributions: {total}")
         print(f"Passed: {passed}")
         print(f"Failed: {failed}")
-        
-        if failed == 0:
-            print("\n[SUCCESS] All Docker tests passed!")
+
+        if failed > 0:
+            print(f"\n❌ Failed distributions:")
+            for image, result in self.results.items():
+                if not result["success"]:
+                    print(f"  • {result['name']}: {result['error'][:100]}...")
+
+        if passed == total:
+            print(f"\n🎉 All Docker tests passed!")
         else:
-            print(f"\n[FAILURE] {failed} distribution(s) failed!")
-            print("\nFailed distributions:")
-            for distro, (success, output) in results.items():
-                if not success:
-                    print(f"\n[DETAILS] {distro}:")
-                    # Show last few lines of output for debugging
-                    lines = output.strip().split('\n')
-                    for line in lines[-10:]:
-                        print(f"  {line}")
+            print(f"\n💥 {failed} Docker test(s) failed!")
 
 
 def main():
-    """Main entry point"""
-    import argparse
-    
-    parser = argparse.ArgumentParser(description="Run UPM tests across Docker containers")
-    parser.add_argument("--distros", nargs="*", 
-                       help="Specific distributions to test (default: all)")
-    parser.add_argument("--list", action="store_true",
-                       help="List available distributions")
-    
+    parser = argparse.ArgumentParser(description="Run pkgx tests across Docker containers")
+    parser.add_argument(
+        "--distros",
+        nargs="+",
+        help="Specific distributions to test (e.g., ubuntu:24.04 fedora:39)"
+    )
+    parser.add_argument(
+        "--list",
+        action="store_true",
+        help="List available distributions"
+    )
+    parser.add_argument(
+        "--verbose", "-v",
+        action="store_true",
+        help="Verbose output"
+    )
+
     args = parser.parse_args()
-    
-    if args.list:
-        print("Available distributions:")
-        for image, config in DISTRIBUTIONS.items():
-            print(f"  {config['name']:20} ({image})")
-        return
-    
-    # Find source directory
+
+    # Determine source directory (should contain pkgx/ and test_pkgx.py)
     source_dir = Path(__file__).parent
-    if not (source_dir / "upm").exists():
-        print("[ERROR] UPM source directory not found. Run from the upm directory.")
-        sys.exit(1)
-    
-    # Run tests
-    runner = DockerTestRunner(source_dir)
-    results = runner.run_all_tests(args.distros)
-    
-    if results:
-        runner.print_summary(results)
-        
-        # Exit with error code if any tests failed
-        failed_count = sum(1 for success, _ in results.values() if not success)
-        sys.exit(0 if failed_count == 0 else 1)
-    else:
-        sys.exit(1)
+
+    if not (source_dir / "pkgx").exists():
+        print("[ERROR] pkgx source directory not found. Run from the pkgx directory.")
+        return 1
+
+    if not (source_dir / "test_pkgx.py").exists():
+        print("[ERROR] test_pkgx.py not found. Run from the pkgx directory.")
+        return 1
+
+    runner = DockerTestRunner(source_dir, verbose=args.verbose)
+
+    if args.list:
+        print("Available Docker distributions for testing:")
+        for image, info in runner.distributions.items():
+            print(f"  {image:<40} {info['name']}")
+        return 0
+
+    success = runner.run_all_tests(args.distros)
+    runner.print_summary()
+
+    return 0 if success else 1
 
 
 if __name__ == "__main__":
-    main() 
+    sys.exit(main())
