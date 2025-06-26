@@ -24,6 +24,11 @@ jobs:
       with:
         version: "latest"
 
+    - name: Debug working directory
+      run: |
+        pwd
+        ls -la
+
     - name: Run native tests
       run: |
         make test
@@ -76,11 +81,11 @@ jobs:
         uvx --from dist/*.whl pkgx --help
         uvx --from dist/*.whl pkgx list-managers
 
-    - name: Upload artifacts
-      uses: actions/upload-artifact@v4
-      with:
-        name: pkgx-dist
-        path: pkgx/dist/
+    # - name: Upload artifacts
+    #   uses: actions/upload-artifact@v4
+    #   with:
+    #     name: pkgx-dist
+    #     path: pkgx/dist/
 
   # Test specific package managers if available
   test-package-managers:
