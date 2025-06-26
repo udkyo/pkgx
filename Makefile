@@ -18,7 +18,7 @@ help:
 # Local testing using the UV script
 test:
 	@echo "[TEST] Running pkgx tests locally..."
-	@uv run test_pkgx.py
+	@uvx --with . --with pytest ./test_pkgx.py
 
 # Docker-based cross-platform testing
 test-docker:

@@ -13,7 +13,6 @@ jobs:
     strategy:
       matrix:
         os: [ubuntu-latest, windows-latest, macos-latest]
-        python-version: ['3.8', '3.9', '3.10', '3.11', '3.12']
       fail-fast: false
 
     steps:
@@ -23,11 +22,6 @@ jobs:
       uses: astral-sh/setup-uv@v3
       with:
         version: "latest"
-
-    - name: Debug working directory
-      run: |
-        pwd
-        ls -la
 
     - name: Run native tests
       run: |

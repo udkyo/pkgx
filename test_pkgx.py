@@ -1,12 +1,4 @@
-#!/usr/bin/env -S uv run
-# /// script
-# requires-python = ">=3.8"
-# dependencies = [
-#     "pytest>=7.0.0",
-# ]
-# [tool.uv]
-# exclude-newer = "2025-02-19T00:00:00Z"
-# ///
+#!/usr/bin/env python3
 
 """
 Comprehensive test suite for pkgx (Universal Package Manager)
@@ -22,15 +14,12 @@ import json
 from pathlib import Path
 from typing import List, Dict, Any, Optional
 
-# Add the pkgx package to the path so we can import it
-sys.path.insert(0, str(Path(__file__).parent / "pkgx"))
-
 try:
     from pkgx.managers import detect_package_manager, PACKAGE_MANAGERS
     from pkgx.cli import main as cli_main
 except ImportError as e:
     print(f"Error importing pkgx modules: {e}")
-    print("Make sure you're running this from the pkgx directory")
+    print("Make sure the pkgx package is installed")
     sys.exit(1)
 
 
