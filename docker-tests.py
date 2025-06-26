@@ -62,25 +62,22 @@ class DockerTestRunner:
         # Base setup commands - install Python, pip, and curl
         if "alpine" in base_image:
             setup_commands = [
-                "apk add --no-cache python3 py3-pip curl bash",
-                "ln -sf python3 /usr/bin/python"
+                "apk add --no-cache curl bash",
             ]
         elif "ubi" in base_image or "rhel" in base_image:
             setup_commands = [
-                f"{install_cmd} python3 python3-pip curl",
-                "ln -sf python3 /usr/bin/python"
+                f"{install_cmd} tar gzip",
             ]
         else:
             setup_commands = [
-                f"{install_cmd} python3 python3-pip curl",
-                "ln -sf python3 /usr/bin/python"
+                f"{install_cmd} curl tar gzip",
             ]
 
         dockerfile_content = f"""
 FROM {base_image}
 
 # Install system dependencies
-RUN {' && '.join(setup_commands)}
+{"RUN " + ' && '.join(setup_commands) if setup_commands else ""}
 
 # Install UV
 RUN curl -LsSf https://astral.sh/uv/install.sh | sh

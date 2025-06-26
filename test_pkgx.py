@@ -32,23 +32,23 @@ class TestResult:
 
     def add_pass(self, test_name: str):
         self.passed += 1
-        print(f"✅ PASS: {test_name}")
+        print(f"[PASS] {test_name}")
 
     def add_fail(self, test_name: str, error: str):
         self.failed += 1
         self.errors.append(f"{test_name}: {error}")
-        print(f"❌ FAIL: {test_name} - {error}")
+        print(f"[FAIL] {test_name} - {error}")
 
     def summary(self):
         total = self.passed + self.failed
-        print(f"\n📊 Test Summary:")
+        print(f"\nTest Summary:")
         print(f"Total tests: {total}")
         print(f"Passed: {self.passed}")
         print(f"Failed: {self.failed}")
         if self.errors:
-            print(f"\n🔍 Failures:")
+            print(f"\nFailures:")
             for error in self.errors:
-                print(f"  • {error}")
+                print(f"  - {error}")
         return self.failed == 0
 
 
@@ -255,7 +255,7 @@ def run_all_tests() -> bool:
     """Run all tests and return True if all passed"""
     results = TestResult()
 
-    print("🧪 Running pkgx Test Suite")
+    print("Running pkgx Test Suite")
     print(f"Platform: {platform.system()} {platform.release()}")
     print(f"Python: {sys.version}")
     print("-" * 50)
@@ -283,9 +283,9 @@ def run_all_tests() -> bool:
     success = results.summary()
 
     if success:
-        print("\n🎉 All tests passed!")
+        print("\nAll tests passed!")
     else:
-        print(f"\n💥 {results.failed} test(s) failed!")
+        print(f"\n{results.failed} test(s) failed!")
 
     return success
 
